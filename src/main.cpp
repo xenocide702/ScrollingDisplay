@@ -31,6 +31,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length){
   message = String(msg);
   message.toUpperCase();  //font only has upper chars -_-
   Serial.printf("Got (%d):%s\r\n", length, msg);
+  x=LEDMATRIX_WIDTH;
+  lmd.clear();
 }
 
 WiFiClient wifiClient;
@@ -90,5 +92,4 @@ void loop() {
   lmd.display();
   delay(ANIM_DELAY);
   if(--x<len*-8){x=LEDMATRIX_WIDTH;}
-  delay(20);
 }

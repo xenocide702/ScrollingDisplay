@@ -15,7 +15,7 @@ const int LEDMATRIX_WIDTH    = LEDMATRIX_SEGMENTS * 8;
 LEDMatrixDriver lmd(LEDMATRIX_SEGMENTS, LEDMATRIX_CS_PIN);
 
 // Marquee speed (lower nubmers = faster)
-const int ANIM_DELAY = 30;
+const int ANIM_DELAY = 15;
 
 int x=0, y=0;   // start top left
 
