@@ -21,7 +21,7 @@
 #include "credentials.h"
 
 
-String message="Connected!";
+String message="CONNECTED!";
 MDNSResponder MDNS;
 
 
