@@ -26,10 +26,10 @@ MDNSResponder MDNS;
 
 
 void mqttCallback(char* topic, byte* payload, unsigned int length){
-  message.toUpperCase();  //font only has upper chars -_-
   char msg[length+1]; //don't forget the null
   strncpy(msg,(const char*)payload,length+1); msg[length]=0;
   message = String(msg);
+  message.toUpperCase();  //font only has upper chars -_-
   Serial.printf("Got (%d):%s\r\n", length, msg);
 }
 
@@ -90,5 +90,5 @@ void loop() {
   lmd.display();
   delay(ANIM_DELAY);
   if(--x<len*-8){x=LEDMATRIX_WIDTH;}
-  delay(50);
+  delay(20);
 }
