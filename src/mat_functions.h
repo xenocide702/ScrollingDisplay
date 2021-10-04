@@ -8,7 +8,7 @@ This file contains all functions related to controlling LED Matrix. Based on bar
 const uint8_t LEDMATRIX_CS_PIN = 15;
 
 // Number of 8x8 segments you are connecting
-const int LEDMATRIX_SEGMENTS = 4;
+const int LEDMATRIX_SEGMENTS = 8;
 const int LEDMATRIX_WIDTH    = LEDMATRIX_SEGMENTS * 8;
 
 // The LEDMatrixDriver class instance

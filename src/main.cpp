@@ -17,6 +17,7 @@
 #include "mainpage.h"
 #include "font.h"
 #include "mat_functions.h"
+#include "webServerHelpers.h"
 
 #include "credentials.h"
 
@@ -24,15 +25,30 @@
 String message="CONNECTED!";
 MDNSResponder MDNS;
 
+const int powerEnablePin = 14;
+
+WebServer server(80);
 
 void mqttCallback(char* topic, byte* payload, unsigned int length){
   char msg[length+1]; //don't forget the null
   strncpy(msg,(const char*)payload,length+1); msg[length]=0;
-  message = String(msg);
-  message.toUpperCase();  //font only has upper chars -_-
-  Serial.printf("Got (%d):%s\r\n", length, msg);
-  x=LEDMATRIX_WIDTH;
-  lmd.clear();
+
+  if(strcmp(topic,"lab/scrollingText")==0){
+    message = String(msg);
+    message.toUpperCase();  //font only has upper chars -_-
+    Serial.printf("Got (%d):%s\r\n", length, msg);
+    x=LEDMATRIX_WIDTH;  //carriage return
+    lmd.clear();        //clear display
+  }
+  else if(strcmp(topic,"lab/lights")==0){
+    String strPayload = String(msg);
+    if(strPayload.indexOf("1")!=-1){
+      digitalWrite(14,HIGH);
+    }
+    else{    
+      digitalWrite(14,LOW);
+    }
+  }
 }
 
 WiFiClient wifiClient;
@@ -50,6 +66,10 @@ void setup() {
     delay(1000);
   }
   Serial.printf("OK! (%s)\r\n",WiFi.localIP().toString().c_str());
+
+  Serial.print("Starting http...");
+  initHttpServer();
+  Serial.println("Done!");
 
   ArduinoOTA
     .onStart([]() {
@@ -81,12 +101,14 @@ void setup() {
 
   if(mqttClient.connect("ESP_Scroller", MQTT_USER, MQTT_PASS)){
     mqttClient.subscribe("lab/scrollingText");
+    mqttClient.subscribe("lab/lights");
   }
 }
 
 void loop() {
   ArduinoOTA.handle();
   mqttClient.loop();
+  server.handleClient();
   int len = message.length();
   writeToMatrix(message,len);
   lmd.display();
