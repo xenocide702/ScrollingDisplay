@@ -41,16 +41,24 @@ WiFiClient wifiClient;
 PubSubClient mqttClient(MQTT_HOST,1883,mqttCallback,wifiClient);
 
 void mqttCallback(char* topic, byte* payload, unsigned int length){
+  
   if(strcmp("lab/keypad/lights",topic)==0){
-    String strPayload = String((const char*)payload);
-    if(strPayload.indexOf("throb")!=-1){
-      ledThrob[0] = true;
-      ledcAttachPin(leds[0],0);
-    }
-    else{
-      ledThrob[1] = false;
-      ledcDetachPin(leds[0]);
-      digitalWrite(leds[0],LOW);
+    
+    for(int i=0;i<5;i++){
+      String strPayload = String((const char*)payload);
+      String str = "\"button\":" + String(i);
+      if(strPayload.indexOf(str)!=-1){
+        if(strPayload.indexOf("throb")!=-1){
+          ledThrob[i] = true;
+          ledcAttachPin(leds[i],0);
+        }
+        else{
+          ledThrob[i] = false;
+          ledcDetachPin(leds[i]);
+          digitalWrite(leds[i],LOW);
+        }
+        break;
+      }
     }
   }
   
@@ -174,7 +182,7 @@ void loop() {
   // if(ledThrob[0]){ledcWrite(0,brightness);}
   // else{ledcWrite(0,0);}
   ledcWrite(0,brightness);
-  if(up%2==1){brightness+=5;if(brightness>=254){up=false;}}
+  if(up%2==1){brightness+=5;if(brightness>=250){up=false;}}
   else{brightness-=5;if(brightness<=50){up=true;}}
 
   delay(100);
