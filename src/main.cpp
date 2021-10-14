@@ -26,6 +26,7 @@ String message="CONNECTED!";
 MDNSResponder MDNS;
 
 
+bool ledThrob[5];
 const uint8_t leds[] = {2,23,18,5,15};
 const int16_t buttons[] = {4095, 3050,2200, 1400,610};
 const uint8_t adcIn=35;
@@ -35,16 +36,26 @@ int16_t brightness;
 
 WebServer server(80);
 
-void mqttCallback(char* topic, byte* payload, unsigned int length){
-
-  if(strcmp(topic,"lab/scrollingText")==0){
-  }
-  else if(strcmp(topic,"lab/lights")==0){
-  }
-}
-
+void mqttCallback(char* topic, byte* payload, unsigned int length);
 WiFiClient wifiClient;
 PubSubClient mqttClient(MQTT_HOST,1883,mqttCallback,wifiClient);
+
+void mqttCallback(char* topic, byte* payload, unsigned int length){
+  if(strcmp("lab/keypad/lights",topic)==0){
+    String strPayload = String((const char*)payload);
+    if(strPayload.indexOf("throb")!=-1){
+      ledThrob[0] = true;
+      ledcAttachPin(leds[0],0);
+    }
+    else{
+      ledThrob[1] = false;
+      ledcDetachPin(leds[0]);
+      digitalWrite(leds[0],LOW);
+    }
+  }
+  
+}
+
 
 void setup() {
   Serial.begin(115200);
@@ -91,6 +102,7 @@ void setup() {
 
   if(mqttClient.connect("espKeypad", MQTT_USER, MQTT_PASS)){
     Serial.println("MQTT Server connected!");
+    mqttClient.subscribe("lab/keypad/lights");
     //mqttClient.subscribe("lab/scrollingText");
     //mqttClient.subscribe("lab/lights");
 
@@ -119,10 +131,13 @@ void readButtons(){
   for(int i=0;i<NUM_BUTTONS;i++){
     if(adcReading > buttons[i]-THRESH && adcReading < buttons[i]+THRESH){
       Serial.printf("Button: %d\r\n",i);
-      if(i==2){mqttClient.publish("lab/lights/main","1");}
-      if(i==3){mqttClient.publish("lab/lights/main","0");}
-      if(i==0){mqttClient.publish("lab/lights/underBench/g","OFF");mqttClient.publish("lab/lights/underBench","OFF");}
-      if(i==4){mqttClient.publish("lab/lights/underBench/g","255");mqttClient.publish("lab/lights/underBench","255");}
+      mqttClient.publish("lab/keypad/buttonPressed", String(i).c_str());
+      delay(250);
+      break;
+      // if(i==2){mqttClient.publish("lab/lights/main","1");}
+      // if(i==3){mqttClient.publish("lab/lights/main","0");}
+      // if(i==0){mqttClient.publish("lab/lights/underBench/g","OFF");mqttClient.publish("lab/lights/underBench","OFF");}
+      // if(i==4){mqttClient.publish("lab/lights/underBench/g","255");mqttClient.publish("lab/lights/underBench","255");}
     }
   }
 }
@@ -132,8 +147,7 @@ void loop() {
   if(!mqttClient.connected()){
     Serial.print("Reconnecting...");
     if(mqttClient.connect("ESP_Scroller", MQTT_USER, MQTT_PASS)){
-      mqttClient.subscribe("lab/scrollingText");
-      mqttClient.subscribe("lab/lights/main");
+      mqttClient.subscribe("lab/keypad/lights");
       Serial.println("Done!");
     }
 
@@ -156,11 +170,12 @@ void loop() {
   //     mqttClient.publish("lab/lights/main","0");
   // }
   // if()
-  for(int i=0;i<5;i++){
-    ledcWrite(i,brightness);
-    if(up%2==1){brightness+=5;if(brightness>=254){up=false;}}
-    else{brightness-=5;if(brightness<=1){up=true;}}
-  } 
+  
+  // if(ledThrob[0]){ledcWrite(0,brightness);}
+  // else{ledcWrite(0,0);}
+  ledcWrite(0,brightness);
+  if(up%2==1){brightness+=5;if(brightness>=254){up=false;}}
+  else{brightness-=5;if(brightness<=50){up=true;}}
 
   delay(100);
   readButtons();
