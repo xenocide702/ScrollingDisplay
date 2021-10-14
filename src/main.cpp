@@ -14,40 +14,32 @@
 #include <PubSubClient.h>
 #include <LEDMatrixDriver.hpp>
 
-#include "mainpage.h"
-#include "font.h"
-#include "mat_functions.h"
 #include "webServerHelpers.h"
 
 #include "credentials.h"
+
+#define BUTTON_ON_PIN 25
+#define BUTTON_OFF_PIN 27
 
 
 String message="CONNECTED!";
 MDNSResponder MDNS;
 
-const int powerEnablePin = 14;
+
+const uint8_t leds[] = {2,23,18,5,15};
+const int16_t buttons[] = {4095, 3050,2200, 1400,610};
+const uint8_t adcIn=35;
+
+bool up = true;
+int16_t brightness;
 
 WebServer server(80);
 
 void mqttCallback(char* topic, byte* payload, unsigned int length){
-  char msg[length+1]; //don't forget the null
-  strncpy(msg,(const char*)payload,length+1); msg[length]=0;
 
   if(strcmp(topic,"lab/scrollingText")==0){
-    message = String(msg);
-    message.toUpperCase();  //font only has upper chars -_-
-    Serial.printf("Got (%d):%s\r\n", length, msg);
-    x=LEDMATRIX_WIDTH;  //carriage return
-    lmd.clear();        //clear display
   }
   else if(strcmp(topic,"lab/lights")==0){
-    String strPayload = String(msg);
-    if(strPayload.indexOf("1")!=-1){
-      digitalWrite(14,HIGH);
-    }
-    else{    
-      digitalWrite(14,LOW);
-    }
   }
 }
 
@@ -56,8 +48,6 @@ PubSubClient mqttClient(MQTT_HOST,1883,mqttCallback,wifiClient);
 
 void setup() {
   Serial.begin(115200);
-  lmd.setEnabled(true);
-  lmd.setIntensity(5);
 
   Serial.print("Connectin to Ansible...");
   WiFi.begin(WIFI_SSID,WIFI_PASS);
@@ -99,19 +89,79 @@ void setup() {
 
   ArduinoOTA.begin();
 
-  if(mqttClient.connect("ESP_Scroller", MQTT_USER, MQTT_PASS)){
-    mqttClient.subscribe("lab/scrollingText");
-    mqttClient.subscribe("lab/lights");
+  if(mqttClient.connect("espKeypad", MQTT_USER, MQTT_PASS)){
+    Serial.println("MQTT Server connected!");
+    //mqttClient.subscribe("lab/scrollingText");
+    //mqttClient.subscribe("lab/lights");
+
+  }
+  pinMode(BUTTON_ON_PIN,INPUT_PULLUP);
+  pinMode(BUTTON_OFF_PIN,INPUT_PULLUP);
+
+
+  ledcSetup(0,4000,8);
+  for(int i=0;i<5;i++){
+    ledcAttachPin(leds[i],0);
+  }
+  pinMode(adcIn,ANALOG);
+}
+void readButtons(){
+  #define READINGS 10
+  float avg = 0;
+  for(int i=0;i<READINGS;i++){
+    avg += analogRead(adcIn);
+  }
+  avg/=READINGS;
+  float adcReading = avg;
+  //Serial.printf("Analog: %d\r\n", analogRead(adcIn));
+#define NUM_BUTTONS 5
+#define THRESH 50
+  for(int i=0;i<NUM_BUTTONS;i++){
+    if(adcReading > buttons[i]-THRESH && adcReading < buttons[i]+THRESH){
+      Serial.printf("Button: %d\r\n",i);
+      if(i==2){mqttClient.publish("lab/lights/main","1");}
+      if(i==3){mqttClient.publish("lab/lights/main","0");}
+      if(i==0){mqttClient.publish("lab/lights/underBench/g","OFF");mqttClient.publish("lab/lights/underBench","OFF");}
+      if(i==4){mqttClient.publish("lab/lights/underBench/g","255");mqttClient.publish("lab/lights/underBench","255");}
+    }
   }
 }
-
+bool buttonOn,buttonOff;
+int ledIndex=0;
 void loop() {
+  if(!mqttClient.connected()){
+    Serial.print("Reconnecting...");
+    if(mqttClient.connect("ESP_Scroller", MQTT_USER, MQTT_PASS)){
+      mqttClient.subscribe("lab/scrollingText");
+      mqttClient.subscribe("lab/lights/main");
+      Serial.println("Done!");
+    }
+
+  }
   ArduinoOTA.handle();
   mqttClient.loop();
   server.handleClient();
-  int len = message.length();
-  writeToMatrix(message,len);
-  lmd.display();
-  delay(ANIM_DELAY);
-  if(--x<len*-8){x=LEDMATRIX_WIDTH;}
+
+  // if(digitalRead(BUTTON_ON_PIN)!=buttonOn){
+  //   if(!buttonOn){
+  //     buttonOn=true;
+  //     Serial.println("ButtonOn");
+  //     mqttClient.publish("lab/lights/main","1");
+  //   }
+  //   else{buttonOn=false;}
+  // }
+  // if(digitalRead(BUTTON_OFF_PIN)!=buttonOff){
+  //   buttonOff=digitalRead(BUTTON_OFF_PIN);
+  //   Serial.println("ButtonOff");
+  //     mqttClient.publish("lab/lights/main","0");
+  // }
+  // if()
+  for(int i=0;i<5;i++){
+    ledcWrite(i,brightness);
+    if(up%2==1){brightness+=5;if(brightness>=254){up=false;}}
+    else{brightness-=5;if(brightness<=1){up=true;}}
+  } 
+
+  delay(100);
+  readButtons();
 }
