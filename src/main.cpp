@@ -125,36 +125,24 @@ void setup() {
   }
   pinMode(adcIn,ANALOG);
 }
+uint8_t analPins[4] = {36,39,34,35};
 void readButtons(){
-  #define READINGS 10
-  float avg = 0;
-  for(int i=0;i<READINGS;i++){
-    avg += analogRead(adcIn);
+  uint16_t vals[4];
+  for(int i=0;i<4;i++){
+    vals[i] = analogRead(analPins[i]);
+    Serial.printf("[%d]: %d\r\n",i,vals[i]);
   }
-  avg/=READINGS;
-  float adcReading = avg;
-  //Serial.printf("Analog: %d\r\n", analogRead(adcIn));
-#define NUM_BUTTONS 5
-#define THRESH 50
-  for(int i=0;i<NUM_BUTTONS;i++){
-    if(adcReading > buttons[i]-THRESH && adcReading < buttons[i]+THRESH){
-      Serial.printf("Button: %d\r\n",i);
-      mqttClient.publish("lab/keypad/buttonPressed", String(i).c_str());
-      delay(250);
-      break;
-      // if(i==2){mqttClient.publish("lab/lights/main","1");}
-      // if(i==3){mqttClient.publish("lab/lights/main","0");}
-      // if(i==0){mqttClient.publish("lab/lights/underBench/g","OFF");mqttClient.publish("lab/lights/underBench","OFF");}
-      // if(i==4){mqttClient.publish("lab/lights/underBench/g","255");mqttClient.publish("lab/lights/underBench","255");}
-    }
-  }
+  char strVals[32];
+  snprintf(strVals,32,"[%d,%d,%d,%d]",vals[0],vals[1],vals[2],vals[3]);
+  mqttClient.publish("lab/sliders",strVals);
+
 }
 bool buttonOn,buttonOff;
 int ledIndex=0;
 void loop() {
   if(!mqttClient.connected()){
     Serial.print("Reconnecting...");
-    if(mqttClient.connect("ESP_Scroller", MQTT_USER, MQTT_PASS)){
+    if(mqttClient.connect("ESP_sliders", MQTT_USER, MQTT_PASS)){
       mqttClient.subscribe("lab/keypad/lights");
       Serial.println("Done!");
     }
@@ -164,27 +152,11 @@ void loop() {
   mqttClient.loop();
   server.handleClient();
 
-  // if(digitalRead(BUTTON_ON_PIN)!=buttonOn){
-  //   if(!buttonOn){
-  //     buttonOn=true;
-  //     Serial.println("ButtonOn");
-  //     mqttClient.publish("lab/lights/main","1");
-  //   }
-  //   else{buttonOn=false;}
-  // }
-  // if(digitalRead(BUTTON_OFF_PIN)!=buttonOff){
-  //   buttonOff=digitalRead(BUTTON_OFF_PIN);
-  //   Serial.println("ButtonOff");
-  //     mqttClient.publish("lab/lights/main","0");
-  // }
-  // if()
-  
-  // if(ledThrob[0]){ledcWrite(0,brightness);}
-  // else{ledcWrite(0,0);}
   ledcWrite(0,brightness);
   if(up%2==1){brightness+=5;if(brightness>=250){up=false;}}
   else{brightness-=5;if(brightness<=50){up=true;}}
 
-  delay(100);
+  for(int i=0;i<4;i++){pinMode(analPins[i],ANALOG);}
+  delay(1000);
   readButtons();
 }
