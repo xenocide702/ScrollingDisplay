@@ -13,6 +13,7 @@
 #include <WebServer.h>
 #include <PubSubClient.h>
 #include <LEDMatrixDriver.hpp>
+#include <ESP32Encoder.h>
 
 #include "webServerHelpers.h"
 
@@ -64,7 +65,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length){
   
 }
 
-
+ESP32Encoder enc;
 void setup() {
   Serial.begin(115200);
 
@@ -115,8 +116,12 @@ void setup() {
     //mqttClient.subscribe("lab/lights");
 
   }
-  pinMode(BUTTON_ON_PIN,INPUT_PULLUP);
-  pinMode(BUTTON_OFF_PIN,INPUT_PULLUP);
+
+
+  ESP32Encoder::useInternalWeakPullResistors=UP;
+  
+  enc.attachHalfQuad(17,19);
+  enc.clearCount();
 
 
   ledcSetup(0,4000,8);
@@ -135,7 +140,7 @@ void readButtons(){
   float adcReading = avg;
   //Serial.printf("Analog: %d\r\n", analogRead(adcIn));
 #define NUM_BUTTONS 5
-#define THRESH 50
+#define THRESH 20
   for(int i=0;i<NUM_BUTTONS;i++){
     if(adcReading > buttons[i]-THRESH && adcReading < buttons[i]+THRESH){
       Serial.printf("Button: %d\r\n",i);
@@ -184,6 +189,12 @@ void loop() {
   ledcWrite(0,brightness);
   if(up%2==1){brightness+=5;if(brightness>=250){up=false;}}
   else{brightness-=5;if(brightness<=50){up=true;}}
+
+  
+  char buff[32];
+  snprintf(buff,32,"%lld\r\n",enc.getCount());
+  mqttClient.publish("lab/keypad/encoder",buff);
+  enc.clearCount();
 
   delay(100);
   readButtons();
