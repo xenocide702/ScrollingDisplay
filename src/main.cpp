@@ -12,7 +12,6 @@
 #include <WiFiClient.h>
 #include <WebServer.h>
 #include <PubSubClient.h>
-#include <LEDMatrixDriver.hpp>
 #include <ESP32Encoder.h>
 
 #include "webServerHelpers.h"
@@ -24,7 +23,7 @@
 
 
 String message="CONNECTED!";
-MDNSResponder MDNS;
+//MDNSResponder MDNS;
 
 
 bool ledThrob[5];
